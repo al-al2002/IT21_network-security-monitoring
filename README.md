@@ -170,8 +170,11 @@ Free-tier notes:
 - If the deployed app and your local `npm run dev` use the same Atlas database,
   both replay into it at once. Stop the local server, or set `EVENT_SOURCE=none`
   in `server/.env`, while the deployed one is running.
-- To keep the database under 512 MB, set `EVENT_RETENTION_DAYS` (see
-  `server/.env.example`) — note it deletes older events immediately.
+- `render.yaml` sets `EVENT_RETENTION_DAYS=7`: MongoDB deletes events older
+  than 7 days so the database stays under the free 512 MB. Threats and
+  incidents are kept.
+- `server/scripts/cleanupSimulatedData.js` removes data left by the old
+  simulator (dry run by default; `--yes` to delete).
 
 ## Project structure
 

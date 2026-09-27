@@ -29,3 +29,8 @@ services:
         value: "loopback, linklocal, uniquelocal, cloudflare"
       - key: EVENT_SOURCE
         value: replay
+      # Auto-delete events older than 7 days (MongoDB TTL index), so the
+      # replay's ~50,000 events a day cannot fill the free 512 MB Atlas cluster.
+      # Threats and incidents are kept.
+      - key: EVENT_RETENTION_DAYS
+        value: "7"
