@@ -37,8 +37,9 @@ const io = new Server(server, {
 // what makes req.ip — and so the source IP on login events — correct.
 //   Local dev (default "loopback"): trust only the Vite dev proxy on this
 //     machine, so a remote client cannot spoof its IP with the header.
-//   Render: set TRUST_PROXY to the number of proxy hops in front of the app
-//     (see render.yaml).
+//   Render: trust its internal proxies on private addresses (see render.yaml).
+//     Accepts anything Express's "trust proxy" does: a hop count, or
+//     comma-separated addresses/names like "loopback, uniquelocal".
 const TRUST_PROXY = process.env.TRUST_PROXY || 'loopback';
 app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY);
 
