@@ -21,11 +21,11 @@ services:
       - key: JWT_SECRET
         generateValue: true
       # Which proxies may report the visitor's IP, so login events record the
-      # visitor rather than Render's load balancer. Render routes requests
-      # through more than one internal proxy on private addresses, so trust
-      # private ranges rather than a fixed hop count. Visitors on the internet
-      # cannot have a private address, so they still cannot spoof their IP.
+      # visitor rather than a proxy. Requests reach the app through Cloudflare
+      # and then Render's internal proxies on private addresses, so trust
+      # exactly those: Cloudflare's published ranges plus private ranges. An
+      # ordinary visitor is neither, so they cannot spoof their IP.
       - key: TRUST_PROXY
-        value: "loopback, linklocal, uniquelocal"
+        value: "loopback, linklocal, uniquelocal, cloudflare"
       - key: EVENT_SOURCE
         value: replay

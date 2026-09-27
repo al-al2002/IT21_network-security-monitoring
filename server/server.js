@@ -37,11 +37,29 @@ const io = new Server(server, {
 // what makes req.ip — and so the source IP on login events — correct.
 //   Local dev (default "loopback"): trust only the Vite dev proxy on this
 //     machine, so a remote client cannot spoof its IP with the header.
-//   Render: trust its internal proxies on private addresses (see render.yaml).
-//     Accepts anything Express's "trust proxy" does: a hop count, or
-//     comma-separated addresses/names like "loopback, uniquelocal".
+//   Render: requests pass through Cloudflare and then Render's own proxies on
+//     private addresses, so trust both (see render.yaml).
+// Accepts anything Express's "trust proxy" does — a hop count, or
+// comma-separated addresses/names like "loopback, uniquelocal" — plus the
+// name "cloudflare", which expands to Cloudflare's published ranges.
+const CLOUDFLARE_RANGES = [
+  // https://www.cloudflare.com/ips-v4 and /ips-v6
+  '173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22',
+  '141.101.64.0/18', '108.162.192.0/18', '190.93.240.0/20', '188.114.96.0/20',
+  '197.234.240.0/22', '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13',
+  '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22',
+  '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32', '2405:b500::/32',
+  '2405:8100::/32', '2a06:98c0::/29', '2c0f:f248::/32',
+];
 const TRUST_PROXY = process.env.TRUST_PROXY || 'loopback';
-app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY);
+app.set(
+  'trust proxy',
+  /^\d+$/.test(TRUST_PROXY)
+    ? Number(TRUST_PROXY)
+    : TRUST_PROXY.split(',')
+        .map((s) => s.trim())
+        .flatMap((s) => (s === 'cloudflare' ? CLOUDFLARE_RANGES : [s]))
+);
 
 // Middleware stack
 app.use(cors());                       // allow the React dev server to call us
