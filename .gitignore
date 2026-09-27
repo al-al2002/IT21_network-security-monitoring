@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.log
+client/dist/
+server/data/feodo-blocklist.cache
+.vscode/
+.DS_Store

@@ -1,0 +1,5 @@
+node_modules
+.env
+*.log
+# Downloaded threat intel cache (refreshed automatically at runtime)
+data/feodo-blocklist.cache

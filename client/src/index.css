@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+/* NetGuard global styles
+   Tailwind v4 picks this up via the @tailwindcss/vite plugin — no PostCSS config needed.
+   The first line (`@import "tailwindcss"`) loads all of Tailwind's utilities.
+*/
+
+:root {
+  /* Severity color tokens — used across the whole app for consistency.
+     Defining them as CSS variables lets us change the palette in one place. */
+  --color-low: #22c55e;       /* green */
+  --color-medium: #eab308;    /* yellow */
+  --color-high: #f97316;      /* orange */
+  --color-critical: #ef4444;  /* red */
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  /* Dark slate background — the standard "security operations center" look.
+     Tailwind v4 lets us write `bg-slate-900` in components, but we set the
+     page background here so default scroll/selection look right. */
+  background-color: #0f172a; /* slate-900 */
+  color: #e2e8f0;            /* slate-200 */
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@keyframes auth-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes auth-logo-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.auth-panel-in {
+  animation: auth-panel-in 500ms ease-out both;
+}
+
+.auth-logo-float {
+  animation: auth-logo-float 3.5s ease-in-out 600ms infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-panel-in,
+  .auth-logo-float {
+    animation: none;
+  }
+}
