@@ -1,6 +1,7 @@
 // pages/ThreatDetail.jsx
 // Shows one threat, its linked events, and lets the analyst change status
-// or escalate to an incident (the incident creation form is added in Phase 4).
+// or open an incident for it. A threat has at most one incident: once it
+// exists, the page links to it instead of offering to create another.
 
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -19,12 +20,14 @@ const ThreatDetail = () => {
   const navigate = useNavigate();
   const [threat, setThreat] = useState(null);
   const [events, setEvents] = useState([]);
+  const [incident, setIncident] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [incidentTitle, setIncidentTitle] = useState('');
   const [incidentDescription, setIncidentDescription] = useState('');
   const [creatingIncident, setCreatingIncident] = useState(false);
+  const [incidentError, setIncidentError] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -32,6 +35,7 @@ const ThreatDetail = () => {
         const data = await api.get(`/threats/${id}`);
         setThreat(data.threat);
         setEvents(data.events);
+        setIncident(data.incident);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -52,6 +56,7 @@ const ThreatDetail = () => {
   const openIncidentModal = () => {
     setIncidentTitle(`${threat.ruleTriggered}: ${threat.description.slice(0, 60)}`);
     setIncidentDescription(`Auto-created from threat. ${threat.description}`);
+    setIncidentError('');
     setShowIncidentModal(true);
   };
 
@@ -67,7 +72,9 @@ const ThreatDetail = () => {
       });
       navigate(`/incidents/${data.incident._id}`);
     } catch (err) {
-      setError('Failed to create incident: ' + err.message);
+      // Shown in the dialog so the threat page stays usable (e.g. someone
+      // else opened an incident for this threat a moment ago).
+      setIncidentError(err.message);
     } finally {
       setCreatingIncident(false);
     }
@@ -123,12 +130,21 @@ const ThreatDetail = () => {
               Escalate
             </button>
           )}
-          <button
-            onClick={openIncidentModal}
-            className="text-sm px-3 py-1.5 rounded bg-amber-700 hover:bg-amber-600 text-white"
-          >
-            Create incident
-          </button>
+          {incident ? (
+            <Link
+              to={`/incidents/${incident._id}`}
+              className="text-sm px-3 py-1.5 rounded bg-amber-700 hover:bg-amber-600 text-white"
+            >
+              View incident ({incident.status})
+            </Link>
+          ) : (
+            <button
+              onClick={openIncidentModal}
+              className="text-sm px-3 py-1.5 rounded bg-amber-700 hover:bg-amber-600 text-white"
+            >
+              Create incident
+            </button>
+          )}
         </div>
       </div>
 
@@ -201,6 +217,9 @@ const ThreatDetail = () => {
                   className="w-full resize-y rounded border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-amber-400"
                 />
               </div>
+              {incidentError && (
+                <p className="text-sm text-red-400">{incidentError}</p>
+              )}
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"

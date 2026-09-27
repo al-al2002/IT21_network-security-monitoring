@@ -7,6 +7,21 @@
 const mongoose = require('mongoose');
 const Threat = require('../models/Threat');
 const Event = require('../models/Event');
+const Incident = require('../models/Incident');
+
+// Escalation means "an analyst needs to act on this", so it gets its own
+// event rather than being buried in the general update stream. Shared with
+// incidentController, since opening an incident also escalates its threat.
+const emitThreatEscalated = (io, threat, user) => {
+  io.emit('threat:escalated', {
+    _id: threat._id,
+    description: threat.description,
+    severity: threat.severity,
+    ruleTriggered: threat.ruleTriggered,
+    escalatedBy: user.name,
+    escalatedById: user._id.toString(),
+  });
+};
 
 const listThreats = async (req, res) => {
   try {
@@ -39,8 +54,8 @@ const listThreats = async (req, res) => {
   }
 };
 
-// Get one threat, with the linked events inlined so the detail page
-// doesn't have to make a second request.
+// Get one threat, with the linked events and its incident (if any) inlined
+// so the detail page doesn't have to make more requests.
 const getThreat = async (req, res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) {
@@ -49,9 +64,11 @@ const getThreat = async (req, res) => {
     const threat = await Threat.findById(req.params.id);
     if (!threat) return res.status(404).json({ message: 'Threat not found' });
 
-    const events = await Event.find({ _id: { $in: threat.eventIds } })
-      .sort({ timestamp: 1 });
-    res.json({ threat, events });
+    const [events, incident] = await Promise.all([
+      Event.find({ _id: { $in: threat.eventIds } }).sort({ timestamp: 1 }),
+      Incident.findOne({ threatId: threat._id }).sort({ createdAt: 1 }).select('_id title status'),
+    ]);
+    res.json({ threat, events, incident });
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch threat', error: err.message });
   }
@@ -85,19 +102,7 @@ const updateThreat = async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       io.emit('threat:updated', threat);
-
-      // Escalation means "an analyst needs to act on this", so it gets its own
-      // event rather than being buried in the general update stream.
-      if (justEscalated) {
-        io.emit('threat:escalated', {
-          _id: threat._id,
-          description: threat.description,
-          severity: threat.severity,
-          ruleTriggered: threat.ruleTriggered,
-          escalatedBy: req.user.name,
-          escalatedById: req.user._id.toString(),
-        });
-      }
+      if (justEscalated) emitThreatEscalated(io, threat, req.user);
     }
 
     res.json({ threat });
@@ -125,4 +130,4 @@ const getThreatStats = async (req, res) => {
   }
 };
 
-module.exports = { listThreats, getThreat, updateThreat, getThreatStats };
+module.exports = { listThreats, getThreat, updateThreat, getThreatStats, emitThreatEscalated };

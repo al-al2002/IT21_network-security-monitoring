@@ -2,7 +2,8 @@
 // The full incident workspace:
 //   - Title, description, status, severity (from linked threat)
 //   - Assignee picker (loads all users on mount)
-//   - Status changer (with auto-logging on the backend)
+//   - Status changer (with auto-logging on the backend). Choosing "Resolved"
+//     asks for a resolution note first; the server rejects a resolve without one.
 //   - Action log timeline (append-only)
 //   - "Add note" form that appends a free-text action entry
 //
@@ -34,6 +35,8 @@ const IncidentDetail = () => {
   const [error, setError] = useState('');
   const [noteText, setNoteText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const [resolutionText, setResolutionText] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -67,9 +70,32 @@ const IncidentDetail = () => {
     try {
       const data = await api.patch(`/incidents/${id}`, body);
       setIncident(data.incident);
+      return true;
     } catch (err) {
       alert('Update failed: ' + err.message);
+      return false;
     }
+  };
+
+  // "Resolved" is not applied straight from the dropdown: it opens a form for
+  // the resolution note, and only submitting that form resolves the incident.
+  const changeStatus = (status) => {
+    if (status === 'resolved') {
+      setResolutionText('');
+      setResolving(true);
+      return;
+    }
+    setResolving(false);
+    updateField({ status });
+  };
+
+  const submitResolution = async (e) => {
+    e.preventDefault();
+    if (!resolutionText.trim()) return;
+    setSubmitting(true);
+    const ok = await updateField({ status: 'resolved', resolution: resolutionText.trim() });
+    setSubmitting(false);
+    if (ok) setResolving(false);
   };
 
   const submitNote = async (e) => {
@@ -133,8 +159,8 @@ const IncidentDetail = () => {
           <div>
             <div className="text-xs text-slate-400 mb-1">Status</div>
             <select
-              value={incident.status}
-              onChange={(e) => updateField({ status: e.target.value })}
+              value={resolving ? 'resolved' : incident.status}
+              onChange={(e) => changeStatus(e.target.value)}
               disabled={!canEdit}
               className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700 text-white text-sm disabled:opacity-60 disabled:cursor-not-allowed"
             >
@@ -176,6 +202,47 @@ const IncidentDetail = () => {
             </div>
           </div>
         </div>
+
+        {resolving && incident.status !== 'resolved' && (
+          <form onSubmit={submitResolution} className="mt-4 border-t border-slate-700 pt-4">
+            <label className="text-xs text-slate-400" htmlFor="resolution">
+              Resolution — how was this incident resolved?
+            </label>
+            <textarea
+              id="resolution"
+              value={resolutionText}
+              onChange={(e) => setResolutionText(e.target.value)}
+              rows={3}
+              maxLength={1000}
+              autoFocus
+              placeholder="e.g. Blocked 172.16.0.1 on the firewall. No successful login found; no compromise."
+              className="mt-1 w-full resize-y rounded bg-slate-900 border border-slate-700 px-3 py-2 text-white text-sm"
+            />
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setResolving(false)}
+                className="px-3 py-1.5 rounded border border-slate-600 text-slate-300 hover:bg-slate-700 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting || !resolutionText.trim()}
+                className="px-3 py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-600 text-white text-sm"
+              >
+                {submitting ? 'Resolving...' : 'Resolve incident'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {incident.status === 'resolved' && incident.resolution && (
+          <div className="mt-4 border-t border-slate-700 pt-4">
+            <div className="text-xs text-slate-400">Resolution</div>
+            <div className="text-emerald-200 text-sm whitespace-pre-wrap">{incident.resolution}</div>
+          </div>
+        )}
       </div>
 
       {/* Linked threat summary */}

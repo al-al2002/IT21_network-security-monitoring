@@ -5,7 +5,8 @@
 // Lifecycle:
 //   - Created from a Threat ("PostgreSQL server is under brute force attack")
 //   - Assigned to an analyst (assignedTo)
-//   - Status: open -> investigating -> resolved
+//   - Status: open -> investigating -> resolved (resolving requires a
+//     resolution note; reopening clears it)
 //   - Every state change or note is appended to actionLog (immutable timeline)
 //
 // Why an embedded array for actionLog instead of a separate collection?
@@ -59,6 +60,13 @@ const incidentSchema = new mongoose.Schema(
     resolvedAt: {
       type: Date,
       // Only set when status moves to "resolved". The controller handles this.
+    },
+    resolution: {
+      // How the incident was resolved: required to move to "resolved",
+      // cleared if the incident is reopened. The action log keeps history.
+      type: String,
+      maxlength: 1000,
+      default: '',
     },
     actionLog: {
       type: [actionEntrySchema],
